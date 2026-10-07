@@ -47,7 +47,9 @@ function windowCard(row: MenuBarUsageRow, snapshot: MenuBarSnapshot, now: number
   const label = stale
     ? "Stale"
     : warning.status === "healthy"
-      ? "Healthy"
+      ? warning.paceProtected
+        ? "On pace"
+        : "Healthy"
       : warning.reason === "pace"
         ? warning.status === "critical"
           ? "Over pace"

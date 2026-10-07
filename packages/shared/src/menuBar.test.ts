@@ -35,8 +35,49 @@ describe("usage pace colors", () => {
   ])("colors 35%% remaining against %s%% expected as %s", (expected, color) => {
     expect(menuBarSummary([paced(35, expected)], paceSettings, now).color).toBe(color);
   });
+  it.each([
+    [10, 5, "#22c55e"],
+    [10, 9, "#22c55e"],
+    [10, 9.01, "#ef4444"],
+    [10, 10, "#ef4444"],
+    [20, 19, "#22c55e"],
+    [20, 20, "#f59e0b"],
+    [0, 0, "#ef4444"],
+  ])("colors %s%% remaining with %s%% expected as %s", (remaining, expected, color) => {
+    const result = menuBarSummary([paced(remaining, expected)], settings, now);
+    expect(result.color).toBe(color);
+    expect(result.title).toBe(`Claude ${remaining}%`);
+  });
+  it("a comfortable window cannot hide another window's warning", () => {
+    const comfortable = paced(10, 5);
+    const limited = { ...paced(8, 8), window: "Session" };
+    const overPace = paced(35, 65, "Codex");
+    expect(menuBarSummary([comfortable, limited], settings, now).title).toBe("Claude 8%");
+    const summary = menuBarSummary([comfortable, overPace], settings, now);
+    expect(summary.title).toBe("Codex 30 Δ");
+    expect(summary.color).toBe("#ef4444");
+  });
+  it("requires a fresh, valid clock to suppress quota warnings", () => {
+    for (const resetsAt of [null, "unknown", new Date(now).toISOString()]) {
+      expect(menuBarSummary([{ ...paced(10, 5), resetsAt }], settings, now).color).toBe("#ef4444");
+    }
+    const stale = { ...paced(10, 5), checkedAt: new Date(now - MENU_BAR_STALE_MS).toISOString() };
+    expect(menuBarSummary([stale], settings, now).color).toBe("#8e8e93");
+  });
+  it("becomes healthy as the reset approaches without changing the reported quota", () => {
+    const duration = 7 * 24 * 60;
+    const weekly = {
+      ...paced(10, 100),
+      windowDurationMins: duration,
+      resetsAt: new Date(now + duration * 60_000 * 0.0901).toISOString(),
+    };
+    expect(menuBarSummary([weekly], settings, now).color).toBe("#ef4444");
+    expect(menuBarSummary([weekly], settings, now + duration * 60_000 * 0.0001 + 1).color).toBe(
+      "#22c55e",
+    );
+  });
   it("uses critical quota ahead of an amber pace warning", () => {
-    const summary = menuBarSummary([paced(35, 50), paced(5, 4, "Codex")], paceSettings, now);
+    const summary = menuBarSummary([paced(35, 50), paced(5, 5, "Codex")], paceSettings, now);
     expect(summary.title).toBe("Codex 5%");
     expect(summary.headline?.reason).toBe("quota");
     expect(summary.color).toBe("#ef4444");
@@ -59,7 +100,7 @@ describe("usage pace colors", () => {
     expect(menuBarSummary([stale], settings, now).color).toBe("#8e8e93");
   });
   it("compares equally severe warnings relative to their thresholds and switches dynamically", () => {
-    const quota = paced(15, 4, "Codex"); // two thirds through the amber quota band
+    const quota = paced(15, 15, "Codex"); // two thirds through the amber quota band
     expect(menuBarSummary([quota, paced(35, 55)], settings, now).title).toBe("Codex 15%");
     expect(menuBarSummary([quota, paced(35, 58)], settings, now).title).toBe("Claude 23 Δ");
     expect(menuBarSummary([quota, paced(35, 42)], settings, now).title).toBe("Codex 15%");

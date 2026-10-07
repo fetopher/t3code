@@ -172,8 +172,10 @@ Pace deficit is expected remaining minus actual remaining, in percentage points:
 60% expected and 35% actual is a 25-point deficit. The defaults are amber at
 10 points and red at 25; low quota defaults to amber at 25% remaining and red at
 10%. Both sets of thresholds are adjustable in the drawer. Each card shows its
-own strongest warning. Missing clocks still allow quota warnings; stale readings
-are excluded from the menu bar.
+own strongest warning. Low quota stays green when at least one percentage point
+more remains than even pace requires: 10% remaining with 5% of the window left
+is healthy. This is automatic; an exhausted quota still warns. Missing clocks
+still allow quota warnings; stale readings are excluded from the menu bar.
 
 The companion alerts for new input or approval requests, failures, and usage
 limits. Existing requests are baselined when it starts, so launching it does not

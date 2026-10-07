@@ -46,10 +46,13 @@ export function menuBarReadings(
 
 const warningColor = { healthy: "#22c55e", warning: "#f59e0b", critical: "#ef4444" };
 
-/** Both risks compete on severity, then distance across their configured warning bands. */
+/** A one-point pace cushion makes low quota healthy; otherwise the strongest risk wins. */
 export function menuBarWindowWarning(row: MenuBarUsageRow, settings: MenuBarSettings, now: number) {
-  const status =
-    row.remainingPercent <= settings.criticalPercent
+  const pace = menuBarPace(row, settings, now);
+  const paceProtected = row.remainingPercent > 0 && pace !== null && pace.deficitPercent <= -1;
+  const status = paceProtected
+    ? "healthy"
+    : row.remainingPercent <= settings.criticalPercent
       ? "critical"
       : row.remainingPercent <= settings.warningPercent
         ? "warning"
@@ -57,6 +60,7 @@ export function menuBarWindowWarning(row: MenuBarUsageRow, settings: MenuBarSett
   const quota = {
     row,
     reason: "quota" as const,
+    paceProtected,
     status,
     severity: status === "critical" ? 2 : status === "warning" ? 1 : 0,
     strength:
@@ -71,11 +75,11 @@ export function menuBarWindowWarning(row: MenuBarUsageRow, settings: MenuBarSett
     color: warningColor[status],
     deficitPercent: 0,
   };
-  const pace = menuBarPace(row, settings, now);
   if (!pace || pace.status === "healthy") return quota;
   const paceWarning = {
     row,
     reason: "pace" as const,
+    paceProtected: false,
     status: pace.status,
     severity: pace.status === "critical" ? 2 : 1,
     strength:
