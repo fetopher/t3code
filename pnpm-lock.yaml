@@ -150,6 +150,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@anthropic-ai/claude-agent-sdk':
+        specifier: ^0.3.276
+        version: 0.3.276(@anthropic-ai/sdk@0.93.0(zod@4.6.5))(@modelcontextprotocol/sdk@1.29.0(zod@4.6.5))(zod@4.6.5)
       '@clerk/electron':
         specifier: 0.0.44
         version: 0.0.44(@clerk/electron-passkeys@0.0.3)(electron-store@8.2.0)(electron@44.4.2)(react-dom@19.3.0(react@19.3.0))(react@19.2.6)

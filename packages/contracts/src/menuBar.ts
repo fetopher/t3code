@@ -32,6 +32,7 @@ export const MenuBarUsageRow = Schema.Struct({
   checkedAt: Schema.String,
   resetsAt: Schema.NullOr(Schema.String),
   expectedRemainingPercent: Schema.optionalKey(Schema.NullOr(percent)),
+  windowDurationMins: Schema.optionalKey(Schema.Number.check(Schema.isGreaterThan(0))),
 });
 export type MenuBarUsageRow = typeof MenuBarUsageRow.Type;
 export const MenuBarSnapshot = Schema.Struct({

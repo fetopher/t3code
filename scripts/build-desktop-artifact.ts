@@ -2721,15 +2721,20 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       icon: "icon.icns",
       category: "public.app-category.developer-tools",
       extendInfo: {
+        ...(process.env.T3CODE_DESKTOP_COMPANION === "1" ? { LSUIElement: true } : {}),
         NSScreenCaptureUsageDescription:
           "T3 Code captures the active window when you use the window capture shortcut.",
       },
-      protocols: [
-        {
-          name: "T3 Code",
-          schemes: ["t3code", "t3code-dev"],
-        },
-      ],
+      protocols:
+        process.env.T3CODE_DESKTOP_COMPANION === "1"
+          ? []
+          : [
+              {
+                name: "T3 Code",
+                schemes: ["t3code", "t3code-dev"],
+              },
+            ],
+      ...(process.env.T3CODE_DESKTOP_COMPANION === "1" && !signed ? { identity: "-" } : {}),
       ...(signed ? { sign: path.join(repoRoot, "scripts/sign-macos.ts") } : {}),
       ...(macPasskeySigning
         ? {
@@ -3717,7 +3722,10 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     // Required by the .deb control file.
     homepage: "https://t3.codes",
     author: "T3 Tools",
-    main: "apps/desktop/dist-electron/boot.cjs",
+    main:
+      process.env.T3CODE_DESKTOP_COMPANION === "1"
+        ? "apps/desktop/dist-electron/companion.cjs"
+        : "apps/desktop/dist-electron/boot.cjs",
     build: yield* createBuildConfig(
       options.platform,
       options.target,

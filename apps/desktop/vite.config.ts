@@ -71,6 +71,21 @@ export default defineConfig({
       dts: false,
       sourcemap: true,
       outExtensions: () => ({ js: ".cjs" }),
+      entry: { companion: "src/companion/main.ts" },
+      clean: false,
+      outputOptions: { codeSplitting: false },
+      deps: {
+        alwaysBundle: (id) => !id.startsWith("node:") && !isMainProcessExternal(id),
+        neverBundle: isMainProcessExternal,
+        onlyBundle: false,
+      },
+    },
+    {
+      format: "cjs",
+      outDir: "dist-electron",
+      dts: false,
+      sourcemap: true,
+      outExtensions: () => ({ js: ".cjs" }),
       define: publicConfigDefine,
       entry: [
         "src/electron/WindowsForegroundFocusWorker.ts",

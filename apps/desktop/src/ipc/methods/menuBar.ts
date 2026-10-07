@@ -32,6 +32,9 @@ let quitting = false;
 let panel: Electron.BrowserWindow | null = null;
 let panelPreload = "";
 let contextMenu: Electron.Menu | undefined;
+let companionAction: ((action: MenuBarAction) => void) | undefined;
+let companionMenu: (() => Electron.MenuItemConstructorOptions[]) | undefined;
+const decodeMenuBarAction = Schema.decodeUnknownSync(MenuBarAction);
 const nativeAlerts = new Map<string, Electron.Notification>();
 let current: MenuBarSnapshot = {
   settings: DEFAULT_MENU_BAR_SETTINGS,
@@ -72,6 +75,10 @@ function send(action: MenuBarAction) {
     panel?.hide();
     return;
   }
+  if (companionAction) {
+    companionAction(action);
+    return;
+  }
   const window = appWindow();
   if (!window) return;
   if (action.type === "usage" || action.type === "settings" || action.type === "thread") {
@@ -102,7 +109,14 @@ export function showNativeThreadNotification(input: DesktopThreadNotification) {
   notification.once("failed", (_event, error) => {
     release();
     Effect.runSync(Effect.logWarning("Could not deliver system notification", error));
+    panel?.webContents.send(
+      "menu-bar:notification-status",
+      "macOS could not display the alert. Check notification settings.",
+    );
   });
+  notification.once("show", () =>
+    panel?.webContents.send("menu-bar:notification-status", "Alert sent to macOS"),
+  );
   notification.once("click", () => {
     notification.close();
     release();
@@ -323,6 +337,10 @@ export function applyMenuBarSnapshot(snapshot: MenuBarSnapshot) {
     {
       label: "Show T3 Code Menu Bar",
       click: () => {
+        if (companionAction) {
+          toggleMenuBarPanel();
+          return;
+        }
         const window = appWindow();
         window?.show();
         window?.focus();
@@ -330,7 +348,50 @@ export function applyMenuBarSnapshot(snapshot: MenuBarSnapshot) {
     },
     { label: "Quit T3 Code Menu Bar", click: () => Electron.app.quit() },
   );
+  if (companionMenu) {
+    for (let index = menu.length - 1; index >= 0; index--)
+      if (
+        menu[index]?.label === "Notify even while T3 is focused" ||
+        menu[index]?.label === "Keep running when window closes"
+      )
+        menu.splice(index, 1);
+    menu.splice(menu.length - 2, 0, ...companionMenu());
+  }
   contextMenu = Electron.Menu.buildFromTemplate(menu);
+}
+
+/** Standalone companion: no app window, server, or write access to standard T3 data. */
+export function initializeCompanionMenuBar(input: {
+  preload: string;
+  snapshot: MenuBarSnapshot;
+  onAction: (action: MenuBarAction) => void;
+  extraMenu: () => Electron.MenuItemConstructorOptions[];
+}) {
+  panelPreload = input.preload;
+  companionAction = input.onAction;
+  companionMenu = input.extraMenu;
+  Electron.ipcMain.handle(MENU_BAR_PANEL_SNAPSHOT_CHANNEL, (event) => {
+    if (event.sender !== panel?.webContents) throw new Error("Unknown menu bar sender");
+    return current;
+  });
+  Electron.ipcMain.handle(MENU_BAR_PANEL_ACTION_CHANNEL, (event, value: unknown) => {
+    if (event.sender !== panel?.webContents) throw new Error("Unknown menu bar sender");
+    send(decodeMenuBarAction(value));
+  });
+  applyMenuBarSnapshot(input.snapshot);
+  Electron.app.on("before-quit", () => {
+    quitting = true;
+    tray?.destroy();
+    panel?.destroy();
+    for (const notification of nativeAlerts.values()) notification.close();
+  });
+}
+
+export function openMenuBarSettings() {
+  if (!panel?.isVisible()) toggleMenuBarPanel();
+  const show = () => panel?.webContents.send("menu-bar:open-settings");
+  if (panel?.webContents.isLoading()) panel.webContents.once("did-finish-load", show);
+  else show();
 }
 
 export const installMenuBar = Effect.fn("desktop.ipc.installMenuBar")(function* () {

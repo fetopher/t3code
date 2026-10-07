@@ -142,24 +142,34 @@ Use `Ctrl+Shift+1/2/3/4` (`Cmd+Shift+1/2/3/4` on macOS) for the past
 Press `Escape` to return to the previous page. Customize these shortcuts in
 **Settings → Keybindings**.
 
-## macOS menu bar
+## macOS menu bar companion
 
-In T3 Code Menu Bar, enable **Settings → General → Menu bar usage** to keep the
-lowest remaining reported allowance in the menu bar. Each provider uses its most
-constrained session, weekly, or other window. Click it for all readings, reset
-times, manual refresh, and provider selection in the popover. Right-click for the
-native menu, or press **Cmd+Shift+U** to open the popover. Choose display detail and icon color in the popover, or color
-and warning thresholds in General settings. Readings older than ten minutes are
-excluded from the headline; unavailable accounts do not count as zero. The triangle
-on each allowance bar marks how much would remain with even spending through
-its reset window. Hover it to compare your pace. It appears when the provider
-reports both the window length and reset time.
+Launch **T3 Code Menu Bar** alongside standard T3 Code. The companion runs in the
+background; keep using standard T3 Code for projects, history, and official
+updates. Its **Open T3 Code** button and notification clicks open the standard
+app. The companion reads local session status without changing the database.
 
-With **Keep running in menu bar** enabled, closing the window hides it and keeps
-usage checks and notifications running. Choose **Quit T3 Code Menu Bar** to stop.
-In General settings, enable **Thread notifications** and **Only when a session
-needs me** for system alerts about input, approval, failures, or usage limits.
-Enable **Notify while focused** to receive them in the foreground too. Clicking
-an alert restores its session. Allow notifications for the fork in macOS
-System Settings if alerts are disabled. Use **Test alert** in the popover to
-check delivery.
+Click its menu bar item for allowances, reset times, and provider selection.
+Choose **Settings** in the drawer for display detail, colors, and usage
+thresholds. Each provider uses its most constrained reported window. Unavailable
+or stale readings are excluded from the headline. Claude and Codex usage is read
+through their existing CLI logins every five minutes, or on manual refresh.
+
+The small triangle marks how much allowance would remain at an even pace until
+reset. Halfway through a weekly window, it marks 50% remaining. Hover or focus it
+for the comparison; green means slower usage, pink means faster, and purple
+means near an even pace. It appears only when the window length and reset time
+are known.
+
+The companion alerts for new input or approval requests, failures, and usage
+limits. Existing requests are baselined when it starts, so launching it does not
+replay old alerts. Right-click the menu bar to change notification preferences,
+include completion alerts, toggle **Hide Dock icon**, or turn
+**Launch companion at login** off. The Dock icon is hidden by default. Alerts can
+arrive while standard T3 Code is focused. Use **Test alert** in the drawer and
+allow T3 Code Menu Bar in macOS notification settings to check delivery.
+
+Standard T3 Code updates remain independent. The companion follows the current
+and V2 database formats; if a future update changes an unsupported schema, the
+drawer reports that session monitoring is unavailable. Its own preferences live
+separately from standard T3 Code. Choose **Quit T3 Code Menu Bar** to stop it.

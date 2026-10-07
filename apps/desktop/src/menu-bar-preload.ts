@@ -89,6 +89,8 @@ window.addEventListener("DOMContentLoaded", () => {
     )
       action({ type: "patch", patch: { colorMode: value } });
     if (input.dataset.setting === "color") action({ type: "patch", patch: { color: value } });
+    if (input.dataset.setting === "warningPercent" || input.dataset.setting === "criticalPercent")
+      action({ type: "patch", patch: { [input.dataset.setting]: Number(value) } });
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") action({ type: "dismiss" });
@@ -96,6 +98,15 @@ window.addEventListener("DOMContentLoaded", () => {
   ipcRenderer.on(MENU_BAR_PANEL_SNAPSHOT_CHANNEL, (_event, value: MenuBarSnapshot) => {
     snapshot = value;
     render();
+  });
+  ipcRenderer.on("menu-bar:open-settings", () => {
+    const options = document.getElementById("display-options");
+    options?.setAttribute("open", "");
+    options?.scrollIntoView({ block: "nearest" });
+  });
+  ipcRenderer.on("menu-bar:notification-status", (_event, message: string) => {
+    const status = document.getElementById("action-status");
+    if (status) status.textContent = message;
   });
   void ipcRenderer.invoke(MENU_BAR_PANEL_SNAPSHOT_CHANNEL).then((value: MenuBarSnapshot) => {
     snapshot = value;
