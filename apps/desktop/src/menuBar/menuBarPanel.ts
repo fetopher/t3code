@@ -1,5 +1,10 @@
 import type { MenuBarSnapshot, MenuBarUsageRow } from "@t3tools/contracts";
-import { menuBarSummary, menuBarPace, MENU_BAR_STALE_MS } from "@t3tools/shared/menuBar";
+import {
+  menuBarSummary,
+  menuBarPace,
+  menuBarWindowWarning,
+  MENU_BAR_STALE_MS,
+} from "@t3tools/shared/menuBar";
 
 const escape = (value: string) =>
   value.replace(/[&<>"']/g, (character) => {
@@ -37,26 +42,19 @@ function windowCard(row: MenuBarUsageRow, snapshot: MenuBarSnapshot, now: number
   const checked = Date.parse(row.checkedAt);
   const stale = !Number.isFinite(checked) || now - checked >= MENU_BAR_STALE_MS;
   const paceReading = menuBarPace(row, snapshot.settings, now);
-  const paceMode = snapshot.settings.colorMode === "pace";
-  const status = stale
-    ? "unknown"
-    : paceMode
-      ? (paceReading?.status ?? "unknown")
-      : row.remainingPercent <= snapshot.settings.criticalPercent
-        ? "critical"
-        : row.remainingPercent <= snapshot.settings.warningPercent
-          ? "warning"
-          : "healthy";
+  const warning = menuBarWindowWarning(row, snapshot.settings, now);
+  const status = stale ? "unknown" : warning.status;
   const label = stale
     ? "Stale"
-    : paceMode
-      ? {
-          unknown: "No pace data",
-          critical: "Over pace",
-          warning: "Watch pace",
-          healthy: "On pace",
-        }[status]
-      : { unknown: "Stale", critical: "Low", warning: "Watch", healthy: "Healthy" }[status];
+    : warning.status === "healthy"
+      ? "Healthy"
+      : warning.reason === "pace"
+        ? warning.status === "critical"
+          ? "Over pace"
+          : "Watch pace"
+        : warning.status === "critical"
+          ? "Low quota"
+          : "Watch quota";
   const percentage = Math.floor(row.remainingPercent);
   const expected = paceReading?.expectedRemainingPercent ?? null;
   const gap = expected == null ? 0 : row.remainingPercent - expected;
@@ -66,14 +64,13 @@ function windowCard(row: MenuBarUsageRow, snapshot: MenuBarSnapshot, now: number
       ? ""
       : `Even pace: ${Math.round(expected)}% remaining, with ${Math.round(100 - expected)}% of the window elapsed. ${pace === "faster" ? "Using allowance faster than an even pace." : pace === "slower" ? "Using allowance slower than an even pace." : "Usage is near an even pace."}`;
   const deficit = paceReading?.deficitPercent ?? 0;
-  const paceDetail =
-    paceReading && paceMode
-      ? `${Math.abs(deficit).toFixed(1).replace(/\.0$/, "")} pts ${deficit > 0 ? "over" : "under"} pace · expected ${Math.round(expected!)}% left`
-      : "";
-  return `<article class="allowance ${status}" ${paceMode && paceReading ? `style="--bar:${paceReading.color}"` : ""} aria-label="${escape(row.window)}: ${stale ? "stale reading" : `${percentage}% remaining`}">
+  const paceDetail = paceReading
+    ? `${Math.abs(deficit).toFixed(1).replace(/\.0$/, "")} pts ${deficit > 0 ? "over" : "under"} pace · expected ${Math.round(expected!)}% left`
+    : "";
+  return `<article class="allowance ${status}" ${stale ? "" : `style="--bar:${warning.color}"`} aria-label="${escape(row.window)}: ${stale ? "stale reading" : `${percentage}% remaining`}">
     <div class="card-heading"><h3>${escape(row.window)}</h3><span class="status">${label}</span></div>
     <div class="reading"><span class="number">${stale ? "—" : percentage}<small>${stale ? "" : "%"}</small></span><span class="remaining">remaining</span></div>
-    <div class="bar-container"><div class="track" role="${stale ? "presentation" : "meter"}" ${stale ? "" : `aria-label="${escape(row.window)} remaining" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${row.remainingPercent}"`}><span style="width:${stale ? 0 : row.remainingPercent}%"></span></div>${expected == null ? "" : `<span class="pace-marker ${pace}" style="left:${expected}%;${paceMode && paceReading ? `border-bottom-color:${paceReading.color}` : ""}" role="img" tabindex="0" aria-label="${escape(paceLabel)}" title="${escape(paceLabel)}"></span>`}</div>
+    <div class="bar-container"><div class="track" role="${stale ? "presentation" : "meter"}" ${stale ? "" : `aria-label="${escape(row.window)} remaining" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${row.remainingPercent}"`}><span style="width:${stale ? 0 : row.remainingPercent}%"></span></div>${expected == null ? "" : `<span class="pace-marker ${pace}" style="left:${expected}%;${paceReading ? `border-bottom-color:${paceReading.color}` : ""}" role="img" tabindex="0" aria-label="${escape(paceLabel)}" title="${escape(paceLabel)}"></span>`}</div>
     ${paceDetail ? `<p class="pace-detail">${paceDetail}</p>` : ""}
     <p class="reset">${stale ? "Refresh to update" : escape(menuBarResetLabel(row.resetsAt, now))}</p>
   </article>`;
@@ -107,26 +104,27 @@ export function renderMenuBarPanel(snapshot: MenuBarSnapshot, now: number) {
           `<option value="${key}" ${key === value ? "selected" : ""}>${label}</option>`,
       )
       .join("");
-  return `<header><div class="brand"><span class="brand-mark">T3</span><div><h1>Usage remaining</h1><p>${summary.lowest ? `${escape(summary.lowest.label)} is closest to its limit` : "Your subscription allowances"}</p></div></div><button class="icon-button" data-action="refresh" aria-label="Refresh usage" title="Refresh usage">↻</button></header>
+  return `<header><div class="brand"><span class="brand-mark">T3</span><div><h1>Usage remaining</h1><p>${summary.headline ? `${escape(summary.headline.row.label)} · ${escape(summary.headline.row.window)} · ${summary.headline.reason === "pace" ? "pace warning" : "lowest quota"}` : "Your subscription allowances"}</p></div></div><button class="icon-button" data-action="refresh" aria-label="Refresh usage" title="Refresh usage">↻</button></header>
     <main>${cards || `<div class="empty"><span class="empty-mark">◷</span><h2>Waiting for usage</h2><p>Connect a provider that reports subscription limits. Its allowances will appear here.</p><button class="text-button" data-action="usage">Open Usage →</button></div>`}
     ${snapshot.rows.some((row) => row.expectedRemainingPercent != null) ? '<p class="pace-legend"><span>▲</span> Even pace for time remaining</p>' : ""}
     ${snapshot.notices.length ? `<aside class="notices">${snapshot.notices.map((notice) => `<p>${escape(notice)}</p>`).join("")}</aside>` : ""}
     <details id="display-options"><summary>Menu bar display <span>⌄</span></summary><div class="display-options"><label>Detail<select data-setting="detail">${options(
       [
-        ["percentage", "Percentage only"],
-        ["provider", "Lowest provider + %"],
+        ["percentage", "Value only"],
+        ["provider", "Provider + value"],
         ["all", "All providers"],
       ],
       snapshot.settings.detail,
     )}</select></label><label>Color<select data-setting="colorMode">${options(
       [
-        ["threshold", "Usage thresholds"],
-        ["pace", "Usage pace"],
+        ["automatic", "Automatic warnings"],
         ["monochrome", "Monochrome"],
         ["custom", "Custom color"],
       ],
-      snapshot.settings.colorMode,
-    )}</select></label>${snapshot.settings.colorMode === "custom" ? `<label class="custom-color">Custom color<input type="color" data-setting="color" value="${snapshot.settings.color}" /></label>` : ""}${snapshot.settings.colorMode === "pace" ? `<label>Amber deficit (pts)<input type="number" min="0" max="${snapshot.settings.paceCriticalPercent}" data-setting="paceWarningPercent" value="${snapshot.settings.paceWarningPercent}" /></label><label>Red deficit (pts)<input type="number" min="${snapshot.settings.paceWarningPercent}" max="100" data-setting="paceCriticalPercent" value="${snapshot.settings.paceCriticalPercent}" /></label><p class="pace-help">Expected remaining minus actual remaining. The worst included window colors the menu bar.</p>` : snapshot.settings.colorMode === "threshold" ? `<label>Warning below %<input type="number" min="0" max="100" data-setting="warningPercent" value="${snapshot.settings.warningPercent}" /></label><label>Critical below %<input type="number" min="0" max="100" data-setting="criticalPercent" value="${snapshot.settings.criticalPercent}" /></label>` : ""}</div></details>
+      snapshot.settings.colorMode === "pace" || snapshot.settings.colorMode === "threshold"
+        ? "automatic"
+        : snapshot.settings.colorMode,
+    )}</select></label>${snapshot.settings.colorMode === "custom" ? `<label class="custom-color">Custom color<input type="color" data-setting="color" value="${snapshot.settings.color}" /></label>` : ""}<label>Amber quota below %<input type="number" min="${snapshot.settings.criticalPercent}" max="100" data-setting="warningPercent" value="${snapshot.settings.warningPercent}" /></label><label>Red quota below %<input type="number" min="0" max="${snapshot.settings.warningPercent}" data-setting="criticalPercent" value="${snapshot.settings.criticalPercent}" /></label><label>Amber pace deficit (pts)<input type="number" min="0" max="${snapshot.settings.paceCriticalPercent}" data-setting="paceWarningPercent" value="${snapshot.settings.paceWarningPercent}" /></label><label>Red pace deficit (pts)<input type="number" min="${snapshot.settings.paceWarningPercent}" max="100" data-setting="paceCriticalPercent" value="${snapshot.settings.paceCriticalPercent}" /></label><p class="pace-help">Automatically shows the strongest quota or pace warning. Red takes priority over amber. Pace deficit is expected remaining minus actual remaining.</p></div></details>
     </main><footer><div class="footer-row"><button class="notification-toggle" data-action="notifications" aria-pressed="${snapshot.notificationsEnabled}" title="Toggle system notifications"><span class="notification-dot ${snapshot.notificationsEnabled ? "on" : ""}"></span>Notifications ${snapshot.notificationsEnabled ? "on" : "off"}</button><div class="footer-actions"><button class="text-button" data-action="test-notification">Test alert</button><button class="text-button" data-action="settings">Settings</button></div></div><button class="open-button" data-action="usage">Open T3 Code <span>↗</span></button><p id="action-status" role="status" aria-live="polite"></p></footer>`;
 }
 

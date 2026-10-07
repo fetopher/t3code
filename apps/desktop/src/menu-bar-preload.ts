@@ -85,7 +85,7 @@ window.addEventListener("DOMContentLoaded", () => {
       action({ type: "patch", patch: { detail: value } });
     if (
       input.dataset.setting === "colorMode" &&
-      (value === "threshold" || value === "monochrome" || value === "pace" || value === "custom")
+      (value === "automatic" || value === "monochrome" || value === "custom")
     )
       action({ type: "patch", patch: { colorMode: value } });
     if (input.dataset.setting === "color") action({ type: "patch", patch: { color: value } });

@@ -58,6 +58,10 @@ try {
   /* First launch uses the standalone companion defaults. */
 }
 
+// Legacy quota-only and pace-only preferences now both use automatic warnings.
+if (snapshot.settings.colorMode === "pace" || snapshot.settings.colorMode === "threshold")
+  snapshot = { ...snapshot, settings: { ...snapshot.settings, colorMode: "automatic" } };
+
 const save = () => {
   NodeFS.mkdirSync(app.getPath("userData"), { recursive: true });
   NodeFS.writeFileSync(

@@ -44,51 +44,94 @@ export function menuBarReadings(
   });
 }
 
-/** Compare each provider's most constrained window; keep ties stable. */
+const warningColor = { healthy: "#22c55e", warning: "#f59e0b", critical: "#ef4444" };
+
+/** Both risks compete on severity, then distance across their configured warning bands. */
+export function menuBarWindowWarning(row: MenuBarUsageRow, settings: MenuBarSettings, now: number) {
+  const status =
+    row.remainingPercent <= settings.criticalPercent
+      ? "critical"
+      : row.remainingPercent <= settings.warningPercent
+        ? "warning"
+        : "healthy";
+  const quota = {
+    row,
+    reason: "quota" as const,
+    status,
+    severity: status === "critical" ? 2 : status === "warning" ? 1 : 0,
+    strength:
+      status === "critical"
+        ? row.remainingPercent === 0
+          ? Infinity
+          : settings.criticalPercent / row.remainingPercent
+        : status === "warning"
+          ? (settings.warningPercent - row.remainingPercent) /
+            Math.max(1, settings.warningPercent - settings.criticalPercent)
+          : 0,
+    color: warningColor[status],
+    deficitPercent: 0,
+  };
+  const pace = menuBarPace(row, settings, now);
+  if (!pace || pace.status === "healthy") return quota;
+  const paceWarning = {
+    row,
+    reason: "pace" as const,
+    status: pace.status,
+    severity: pace.status === "critical" ? 2 : 1,
+    strength:
+      pace.status === "critical"
+        ? pace.deficitPercent / Math.max(1, settings.paceCriticalPercent)
+        : (pace.deficitPercent - settings.paceWarningPercent) /
+          Math.max(1, settings.paceCriticalPercent - settings.paceWarningPercent),
+    color: pace.color,
+    deficitPercent: pace.deficitPercent,
+  };
+  return paceWarning.severity > quota.severity ||
+    (paceWarning.severity === quota.severity && paceWarning.strength > quota.strength)
+    ? paceWarning
+    : quota;
+}
+
+/** The title and color always refer to the same strongest warning. */
 export function menuBarSummary(
   rows: readonly MenuBarUsageRow[],
   settings: MenuBarSettings,
   now: number,
 ) {
   const readings = menuBarReadings(rows, settings, now);
-  const byProvider = new Map<string, MenuBarUsageRow>();
-  for (const row of readings) {
-    const previous = byProvider.get(row.provider);
-    if (!previous || row.remainingPercent < previous.remainingPercent)
-      byProvider.set(row.provider, row);
+  const warnings = readings
+    .map((row) => menuBarWindowWarning(row, settings, now))
+    .sort(
+      (a, b) =>
+        b.severity - a.severity ||
+        b.strength - a.strength ||
+        a.row.remainingPercent - b.row.remainingPercent ||
+        a.row.label.localeCompare(b.row.label),
+    );
+  const byProvider = new Map<string, (typeof warnings)[number]>();
+  for (const warning of warnings) {
+    if (!byProvider.has(warning.row.provider)) byProvider.set(warning.row.provider, warning);
   }
-  const providers = [...byProvider.values()].sort(
-    (a, b) => a.remainingPercent - b.remainingPercent || a.label.localeCompare(b.label),
-  );
-  const lowest = providers[0];
-  const worstPace = readings
-    .flatMap((row) => {
-      const pace = menuBarPace(row, settings, now);
-      return pace ? [pace] : [];
-    })
-    .sort((a, b) => b.deficitPercent - a.deficitPercent)[0];
-  // Floor keeps a nearly exhausted allowance from being rounded up to 1%.
-  const percentage = (row: MenuBarUsageRow) => `${Math.floor(row.remainingPercent)}%`;
-  const title = !lowest
+  const providerWarnings = [...byProvider.values()];
+  const providers = providerWarnings.map((warning) => warning.row);
+  const lowest = [...readings].sort((a, b) => a.remainingPercent - b.remainingPercent)[0];
+  const headline = warnings[0];
+  const metric = (warning: (typeof warnings)[number]) =>
+    warning.reason === "pace"
+      ? `${warning.deficitPercent.toFixed(1).replace(/\.0$/, "")} Δ`
+      : `${Math.floor(warning.row.remainingPercent)}%`;
+  const title = !headline
     ? "T3 —"
     : settings.detail === "percentage"
-      ? percentage(lowest)
+      ? metric(headline)
       : settings.detail === "all"
-        ? providers.map((row) => `${row.label} ${percentage(row)}`).join(" · ")
-        : `${lowest.label} ${percentage(lowest)}`;
+        ? providerWarnings.map((warning) => `${warning.row.label} ${metric(warning)}`).join(" · ")
+        : `${headline.row.label} ${metric(headline)}`;
   const color =
     settings.colorMode === "monochrome"
       ? "#000000"
       : settings.colorMode === "custom"
         ? settings.color
-        : settings.colorMode === "pace"
-          ? (worstPace?.color ?? "#8e8e93")
-          : !lowest
-            ? "#8e8e93"
-            : lowest.remainingPercent <= settings.criticalPercent
-              ? "#ef4444"
-              : lowest.remainingPercent <= settings.warningPercent
-                ? "#f59e0b"
-                : "#22c55e";
-  return { title, color, lowest, providers, readings, worstPace };
+        : (headline?.color ?? "#8e8e93");
+  return { title, color, lowest, providers, readings, headline };
 }

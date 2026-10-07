@@ -17,7 +17,7 @@ export function MenuBarSettings() {
     <>
       <SettingsRow
         {...searchableSetting("menu-bar")}
-        description="Show the lowest remaining subscription allowance. Click the menu bar for all providers, reset times, and provider selection."
+        description="Automatically show the strongest quota or pace warning. Click the menu bar for all providers, reset times, and provider selection."
         control={
           <Switch
             aria-label="Menu bar usage"
@@ -28,7 +28,7 @@ export function MenuBarSettings() {
       />
       <SettingsRow
         title="Menu bar detail"
-        description="Each provider uses its most constrained allowance, including session and weekly limits."
+        description="The value and provider follow whichever included window has the strongest warning."
         control={
           <Select
             value={settings.detail}
@@ -41,16 +41,16 @@ export function MenuBarSettings() {
               <SelectValue>
                 {
                   {
-                    percentage: "Percentage only",
-                    provider: "Lowest provider + percentage",
+                    percentage: "Value only",
+                    provider: "Provider + value",
                     all: "All providers",
                   }[settings.detail]
                 }
               </SelectValue>
             </SelectTrigger>
             <SelectPopup>
-              <SelectItem value="percentage">Percentage only</SelectItem>
-              <SelectItem value="provider">Lowest provider + percentage</SelectItem>
+              <SelectItem value="percentage">Value only</SelectItem>
+              <SelectItem value="provider">Provider + value</SelectItem>
               <SelectItem value="all">All providers</SelectItem>
             </SelectPopup>
           </Select>
@@ -58,16 +58,19 @@ export function MenuBarSettings() {
       />
       <SettingsRow
         title="Menu bar color"
-        description="Color the status icon by remaining allowance or usage pace, use monochrome, or choose a custom color."
+        description="Automatically color the strongest warning, use monochrome, or choose a custom color."
         control={
           <div className="flex items-center gap-3">
             <Select
-              value={settings.colorMode}
+              value={
+                settings.colorMode === "pace" || settings.colorMode === "threshold"
+                  ? "automatic"
+                  : settings.colorMode
+              }
               onValueChange={(colorMode) => {
                 if (
                   colorMode === "monochrome" ||
-                  colorMode === "threshold" ||
-                  colorMode === "pace" ||
+                  colorMode === "automatic" ||
                   colorMode === "custom"
                 )
                   patch({ colorMode });
@@ -78,8 +81,9 @@ export function MenuBarSettings() {
                   {
                     {
                       monochrome: "Monochrome",
-                      threshold: "Usage thresholds",
-                      pace: "Usage pace",
+                      automatic: "Automatic warnings",
+                      threshold: "Automatic warnings",
+                      pace: "Automatic warnings",
                       custom: "Custom color",
                     }[settings.colorMode]
                   }
@@ -87,8 +91,7 @@ export function MenuBarSettings() {
               </SelectTrigger>
               <SelectPopup>
                 <SelectItem value="monochrome">Monochrome</SelectItem>
-                <SelectItem value="threshold">Usage thresholds</SelectItem>
-                <SelectItem value="pace">Usage pace</SelectItem>
+                <SelectItem value="automatic">Automatic warnings</SelectItem>
                 <SelectItem value="custom">Custom color</SelectItem>
               </SelectPopup>
             </Select>
@@ -103,95 +106,88 @@ export function MenuBarSettings() {
           </div>
         }
       />
-      {settings.colorMode === "threshold" ? (
-        <SettingsRow
-          title="Usage color thresholds"
-          description="Green above warning; amber at warning; red at critical. Values are percentage remaining."
-          control={
-            <div className="flex items-center gap-2">
-              <label htmlFor="menu-warning">Warning</label>
-              <div className="w-20">
-                <Input
-                  id="menu-warning"
-                  type="number"
-                  min={settings.criticalPercent}
-                  max={100}
-                  value={settings.warningPercent}
-                  onChange={(event) => {
-                    const n = event.target.valueAsNumber;
-                    if (Number.isFinite(n))
-                      patch({
-                        warningPercent: Math.max(settings.criticalPercent, Math.min(100, n)),
-                      });
-                  }}
-                />
-              </div>
-              <label htmlFor="menu-critical">Critical</label>
-              <div className="w-20">
-                <Input
-                  id="menu-critical"
-                  type="number"
-                  min={0}
-                  max={settings.warningPercent}
-                  value={settings.criticalPercent}
-                  onChange={(event) => {
-                    const n = event.target.valueAsNumber;
-                    if (Number.isFinite(n))
-                      patch({ criticalPercent: Math.max(0, Math.min(settings.warningPercent, n)) });
-                  }}
-                />
-              </div>
+      <SettingsRow
+        title="Quota warning thresholds"
+        description="Green above warning; amber at warning; red at critical. Values are percentage remaining."
+        control={
+          <div className="flex items-center gap-2">
+            <label htmlFor="menu-warning">Warning</label>
+            <div className="w-20">
+              <Input
+                id="menu-warning"
+                type="number"
+                min={settings.criticalPercent}
+                max={100}
+                value={settings.warningPercent}
+                onChange={(event) => {
+                  const n = event.target.valueAsNumber;
+                  if (Number.isFinite(n))
+                    patch({
+                      warningPercent: Math.max(settings.criticalPercent, Math.min(100, n)),
+                    });
+                }}
+              />
             </div>
-          }
-        />
-      ) : null}
-      {settings.colorMode === "pace" ? (
-        <SettingsRow
-          title="Pace color thresholds"
-          description="Expected remaining minus actual remaining, in percentage points. Amber at warning; red at critical. Uses the worst included window."
-          control={
-            <div className="flex items-center gap-2">
-              <label htmlFor="menu-pace-warning">Amber</label>
-              <div className="w-20">
-                <Input
-                  id="menu-pace-warning"
-                  type="number"
-                  min={0}
-                  max={settings.paceCriticalPercent}
-                  value={settings.paceWarningPercent}
-                  onChange={(event) => {
-                    const n = event.target.valueAsNumber;
-                    if (Number.isFinite(n))
-                      patch({
-                        paceWarningPercent: Math.max(0, Math.min(settings.paceCriticalPercent, n)),
-                      });
-                  }}
-                />
-              </div>
-              <label htmlFor="menu-pace-critical">Red</label>
-              <div className="w-20">
-                <Input
-                  id="menu-pace-critical"
-                  type="number"
-                  min={settings.paceWarningPercent}
-                  max={100}
-                  value={settings.paceCriticalPercent}
-                  onChange={(event) => {
-                    const n = event.target.valueAsNumber;
-                    if (Number.isFinite(n))
-                      patch({
-                        paceCriticalPercent: Math.max(
-                          settings.paceWarningPercent,
-                          Math.min(100, n),
-                        ),
-                      });
-                  }}
-                />
-              </div>
+            <label htmlFor="menu-critical">Critical</label>
+            <div className="w-20">
+              <Input
+                id="menu-critical"
+                type="number"
+                min={0}
+                max={settings.warningPercent}
+                value={settings.criticalPercent}
+                onChange={(event) => {
+                  const n = event.target.valueAsNumber;
+                  if (Number.isFinite(n))
+                    patch({ criticalPercent: Math.max(0, Math.min(settings.warningPercent, n)) });
+                }}
+              />
             </div>
-          }
-        />
-      ) : null}
+          </div>
+        }
+      />
+      <SettingsRow
+        title="Pace warning thresholds"
+        description="Expected remaining minus actual remaining, in percentage points. Amber at warning; red at critical. Competes with low quota warnings automatically."
+        control={
+          <div className="flex items-center gap-2">
+            <label htmlFor="menu-pace-warning">Amber</label>
+            <div className="w-20">
+              <Input
+                id="menu-pace-warning"
+                type="number"
+                min={0}
+                max={settings.paceCriticalPercent}
+                value={settings.paceWarningPercent}
+                onChange={(event) => {
+                  const n = event.target.valueAsNumber;
+                  if (Number.isFinite(n))
+                    patch({
+                      paceWarningPercent: Math.max(0, Math.min(settings.paceCriticalPercent, n)),
+                    });
+                }}
+              />
+            </div>
+            <label htmlFor="menu-pace-critical">Red</label>
+            <div className="w-20">
+              <Input
+                id="menu-pace-critical"
+                type="number"
+                min={settings.paceWarningPercent}
+                max={100}
+                value={settings.paceCriticalPercent}
+                onChange={(event) => {
+                  const n = event.target.valueAsNumber;
+                  if (Number.isFinite(n))
+                    patch({
+                      paceCriticalPercent: Math.max(settings.paceWarningPercent, Math.min(100, n)),
+                    });
+                }}
+              />
+            </div>
+          </div>
+        }
+      />
       <SettingsRow
         title="Keep running in menu bar"
         description="Closing the window hides it while usage checks and session notifications continue. Use Quit to stop the app."

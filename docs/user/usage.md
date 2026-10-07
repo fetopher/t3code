@@ -151,22 +151,29 @@ app. The companion reads local session status without changing the database.
 
 Click its menu bar item for allowances, reset times, and provider selection.
 Choose **Settings** in the drawer for display detail, colors, and usage
-thresholds. Each provider uses its most constrained reported window. Unavailable
-or stale readings are excluded from the headline. Claude and Codex usage is read
+thresholds. Each provider uses its strongest warning across reported windows.
+Unavailable or stale readings are excluded from the headline. Claude and Codex usage is read
 through their existing CLI logins every five minutes, or on manual refresh.
 
 The small triangle marks how much allowance would remain at an even pace until
 reset. Halfway through a weekly window, it marks 50% remaining. Hover or focus it
-for the comparison; green means slower usage, pink means faster, and purple
-means near an even pace. It appears only when the window length and reset time
-are known.
+for the comparison; green means within the pace threshold, amber means a pace
+warning, and red means critical pace. It appears only when the window length and
+reset time are known.
 
-Choose **Usage pace** for the color mode to highlight spending ahead of the even
-pace marker. It compares expected remaining minus actual remaining, in
-percentage points: 60% expected and 35% actual is a 25-point deficit. Amber starts
-at 10 points and red at 25, with both thresholds adjustable in the drawer.
-Each card shows its own pace, and the worst included window colors the menu bar.
-Missing clocks or stale data never produce an invented pace status.
+The menu bar automatically compares low remaining quota with usage ahead of the
+pace marker. Red takes priority over amber; equally severe warnings are ranked
+by how far they cross their configured thresholds. Its value and provider follow
+the winning warning: a remaining percentage for low quota, or a compact delta
+(such as **3.1 Δ**) for percentage points over pace. When all windows are healthy,
+it shows the lowest remaining quota.
+
+Pace deficit is expected remaining minus actual remaining, in percentage points:
+60% expected and 35% actual is a 25-point deficit. The defaults are amber at
+10 points and red at 25; low quota defaults to amber at 25% remaining and red at
+10%. Both sets of thresholds are adjustable in the drawer. Each card shows its
+own strongest warning. Missing clocks still allow quota warnings; stale readings
+are excluded from the menu bar.
 
 The companion alerts for new input or approval requests, failures, and usage
 limits. Existing requests are baselined when it starts, so launching it does not

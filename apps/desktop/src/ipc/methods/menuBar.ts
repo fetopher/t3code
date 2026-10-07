@@ -229,12 +229,9 @@ export function applyMenuBarSnapshot(snapshot: MenuBarSnapshot) {
   }
   tray.setTitle(summary.title, { fontType: "monospacedDigit" });
   tray.setToolTip(
-    (summary.lowest
-      ? `${summary.lowest.label}: ${summary.lowest.remainingPercent.toFixed(1)}% left (${summary.lowest.window})`
-      : "No fresh subscription limits available") +
-      (snapshot.settings.colorMode === "pace" && summary.worstPace
-        ? `\nPace: ${summary.worstPace.row.label} ${summary.worstPace.row.window} · ${Math.max(0, summary.worstPace.deficitPercent).toFixed(1)} points ahead of even pace`
-        : ""),
+    summary.headline
+      ? `${summary.headline.row.label} · ${summary.headline.row.window}: ${summary.headline.reason === "pace" ? `${summary.headline.deficitPercent.toFixed(1)} points over even pace` : `${summary.headline.row.remainingPercent.toFixed(1)}% left`}\n${summary.headline.row.remainingPercent.toFixed(1)}% remaining · strongest quota or pace warning`
+      : "No fresh subscription limits available",
   );
   const patch = (value: Partial<MenuBarSettings>) => send({ type: "patch", patch: value });
   const menu: Electron.MenuItemConstructorOptions[] = [
@@ -266,8 +263,8 @@ export function applyMenuBarSnapshot(snapshot: MenuBarSnapshot) {
       label: "Display detail",
       submenu: (
         [
-          ["percentage", "Percentage only"],
-          ["provider", "Lowest provider + percentage"],
+          ["percentage", "Value only"],
+          ["provider", "Provider + value"],
           ["all", "All providers"],
         ] as const
       ).map(([detail, label]) => ({
@@ -287,16 +284,12 @@ export function applyMenuBarSnapshot(snapshot: MenuBarSnapshot) {
           click: () => patch({ colorMode: "monochrome" }),
         },
         {
-          label: "Usage thresholds",
+          label: "Automatic warnings",
           type: "radio",
-          checked: snapshot.settings.colorMode === "threshold",
-          click: () => patch({ colorMode: "threshold" }),
-        },
-        {
-          label: "Usage pace",
-          type: "radio",
-          checked: snapshot.settings.colorMode === "pace",
-          click: () => patch({ colorMode: "pace" }),
+          checked:
+            snapshot.settings.colorMode !== "monochrome" &&
+            snapshot.settings.colorMode !== "custom",
+          click: () => patch({ colorMode: "automatic" }),
         },
         { label: "Custom color…", click: () => send({ type: "settings" }) },
       ],
@@ -400,6 +393,8 @@ export function initializeCompanionMenuBar(input: {
 
 export function openMenuBarSettings() {
   if (!panel?.isVisible()) toggleMenuBarPanel();
+  Electron.app.focus({ steal: true });
+  panel?.focus();
   const show = () => panel?.webContents.send("menu-bar:open-settings");
   if (panel?.webContents.isLoading()) panel.webContents.once("did-finish-load", show);
   else show();

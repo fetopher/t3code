@@ -7,7 +7,7 @@ const color = Schema.String.check(Schema.isPattern(/^#[0-9a-f]{6}$/i));
 export const MenuBarSettings = Schema.Struct({
   enabled: Schema.Boolean,
   detail: Schema.Literals(["percentage", "provider", "all"]),
-  colorMode: Schema.Literals(["monochrome", "threshold", "pace", "custom"]),
+  colorMode: Schema.Literals(["automatic", "monochrome", "threshold", "pace", "custom"]),
   color,
   warningPercent: percent,
   criticalPercent: percent,
@@ -20,7 +20,7 @@ export type MenuBarSettings = typeof MenuBarSettings.Type;
 export const DEFAULT_MENU_BAR_SETTINGS: MenuBarSettings = {
   enabled: true,
   detail: "provider",
-  colorMode: "threshold",
+  colorMode: "automatic",
   color: "#8b5cf6",
   warningPercent: 25,
   criticalPercent: 10,

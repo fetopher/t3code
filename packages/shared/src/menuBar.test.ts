@@ -7,6 +7,8 @@ import {
 import * as Schema from "effect/Schema";
 import { menuBarPace, menuBarSummary, MENU_BAR_STALE_MS } from "./menuBar.ts";
 
+const settings = DEFAULT_MENU_BAR_SETTINGS;
+const decodeMenuBarSettings = Schema.decodeUnknownSync(MenuBarSettings);
 const now = Date.parse("2026-10-07T18:00:00Z");
 const row = (provider: string, remainingPercent: number, window = "Session"): MenuBarUsageRow => ({
   provider,
@@ -33,22 +35,52 @@ describe("usage pace colors", () => {
   ])("colors 35%% remaining against %s%% expected as %s", (expected, color) => {
     expect(menuBarSummary([paced(35, expected)], paceSettings, now).color).toBe(color);
   });
-  it("uses the worst included window while preserving the lowest-remaining headline", () => {
-    const rows = [paced(35, 60), paced(5, 4, "Codex")];
-    const summary = menuBarSummary(rows, paceSettings, now);
+  it("uses critical quota ahead of an amber pace warning", () => {
+    const summary = menuBarSummary([paced(35, 50), paced(5, 4, "Codex")], paceSettings, now);
     expect(summary.title).toBe("Codex 5%");
-    expect(summary.worstPace?.row.provider).toBe("Claude");
+    expect(summary.headline?.reason).toBe("quota");
     expect(summary.color).toBe("#ef4444");
-    expect(
-      menuBarSummary(rows, { ...paceSettings, excludedProviders: ["Claude"] }, now).color,
-    ).toBe("#22c55e");
   });
-  it("never invents pace for stale readings, missing clocks, or reset windows that have ended", () => {
+  it("uses critical pace ahead of amber quota and keeps title and color aligned", () => {
+    const rows = [paced(35, 65), paced(20, 4, "Codex")];
+    const summary = menuBarSummary(rows, settings, now);
+    expect(summary.title).toBe("Claude 30 Δ");
+    expect(summary.headline?.row.provider).toBe("Claude");
+    expect(summary.headline?.reason).toBe("pace");
+    expect(summary.color).toBe("#ef4444");
+    expect(menuBarSummary(rows, { ...settings, excludedProviders: ["Claude"] }, now).title).toBe(
+      "Codex 20%",
+    );
+  });
+  it("still warns on quota without a usable reset clock, and excludes stale warnings", () => {
     const stale = { ...paced(35, 80), checkedAt: new Date(now - MENU_BAR_STALE_MS).toISOString() };
     const expired = { ...paced(35, 80), resetsAt: new Date(now).toISOString() };
-    expect(menuBarSummary([stale, expired, row("Codex", 5)], paceSettings, now).color).toBe(
-      "#8e8e93",
+    expect(menuBarSummary([stale, expired, row("Codex", 5)], settings, now).title).toBe("Codex 5%");
+    expect(menuBarSummary([stale], settings, now).color).toBe("#8e8e93");
+  });
+  it("compares equally severe warnings relative to their thresholds and switches dynamically", () => {
+    const quota = paced(15, 4, "Codex"); // two thirds through the amber quota band
+    expect(menuBarSummary([quota, paced(35, 55)], settings, now).title).toBe("Codex 15%");
+    expect(menuBarSummary([quota, paced(35, 58)], settings, now).title).toBe("Claude 23 Δ");
+    expect(menuBarSummary([quota, paced(35, 42)], settings, now).title).toBe("Codex 15%");
+    expect(menuBarSummary([paced(0, 99), paced(35, 99, "Codex")], settings, now).title).toBe(
+      "Claude 0%",
     );
+  });
+  it("checks all windows, including a pace warning outside the lowest-quota window", () => {
+    const rows = [row("Claude", 26), { ...paced(50, 80), window: "Weekly" }];
+    expect(menuBarSummary(rows, settings, now).title).toBe("Claude 30 Δ");
+    expect(menuBarSummary(rows, { ...settings, detail: "percentage" }, now).title).toBe("30 Δ");
+    expect(
+      menuBarSummary([...rows, row("Codex", 20)], { ...settings, detail: "all" }, now).title,
+    ).toBe("Claude 30 Δ · Codex 20%");
+  });
+  it("automatic selection also applies to legacy and appearance preferences", () => {
+    for (const colorMode of ["threshold", "pace", "monochrome", "custom"] as const) {
+      expect(
+        menuBarSummary([paced(35, 70), row("Codex", 20)], { ...settings, colorMode }, now).title,
+      ).toBe("Claude 35 Δ");
+    }
   });
   it("uses elapsed reset time and honors customized pace thresholds", () => {
     const weekly = {
@@ -66,15 +98,17 @@ describe("usage pace colors", () => {
     ).toBe("#ef4444");
   });
   it("loads existing preferences with the new defaults without resetting their display choice", () => {
-    const { paceWarningPercent: _warning, paceCriticalPercent: _critical, ...legacy } = settings;
+    const {
+      paceWarningPercent: _warning,
+      paceCriticalPercent: _critical,
+      ...legacy
+    } = { ...settings, colorMode: "threshold" as const };
     const loaded = decodeMenuBarSettings(legacy);
     expect(loaded.colorMode).toBe("threshold");
     expect(loaded.paceWarningPercent).toBe(10);
     expect(loaded.paceCriticalPercent).toBe(25);
   });
 });
-const settings = DEFAULT_MENU_BAR_SETTINGS;
-const decodeMenuBarSettings = Schema.decodeUnknownSync(MenuBarSettings);
 describe("menu bar usage", () => {
   it("compares the tightest window across providers and preserves real zero", () => {
     const result = menuBarSummary(
