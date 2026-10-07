@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import * as Effect from "effect/Effect";
 import { EnvironmentId, ThreadId } from "./baseSchemas.ts";
 
 const percent = Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 }));
@@ -6,10 +7,12 @@ const color = Schema.String.check(Schema.isPattern(/^#[0-9a-f]{6}$/i));
 export const MenuBarSettings = Schema.Struct({
   enabled: Schema.Boolean,
   detail: Schema.Literals(["percentage", "provider", "all"]),
-  colorMode: Schema.Literals(["monochrome", "threshold", "custom"]),
+  colorMode: Schema.Literals(["monochrome", "threshold", "pace", "custom"]),
   color,
   warningPercent: percent,
   criticalPercent: percent,
+  paceWarningPercent: percent.pipe(Schema.withDecodingDefault(Effect.succeed(10))),
+  paceCriticalPercent: percent.pipe(Schema.withDecodingDefault(Effect.succeed(25))),
   excludedProviders: Schema.Array(Schema.String),
   keepRunning: Schema.Boolean,
 });
@@ -21,6 +24,8 @@ export const DEFAULT_MENU_BAR_SETTINGS: MenuBarSettings = {
   color: "#8b5cf6",
   warningPercent: 25,
   criticalPercent: 10,
+  paceWarningPercent: 10,
+  paceCriticalPercent: 25,
   excludedProviders: [],
   keepRunning: true,
 };
@@ -74,6 +79,8 @@ export const MenuBarAction = Schema.Union([
       color: Schema.optionalKey(color),
       warningPercent: Schema.optionalKey(percent),
       criticalPercent: Schema.optionalKey(percent),
+      paceWarningPercent: Schema.optionalKey(percent),
+      paceCriticalPercent: Schema.optionalKey(percent),
       excludedProviders: Schema.optionalKey(MenuBarSettings.fields.excludedProviders),
       keepRunning: Schema.optionalKey(MenuBarSettings.fields.keepRunning),
     }),

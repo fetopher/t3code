@@ -184,6 +184,7 @@ export function toggleMenuBarPanel() {
     });
     window.once("ready-to-show", () => {
       if (!window.isDestroyed() && current.settings.enabled) {
+        Electron.app.focus({ steal: true });
         window.show();
         window.focus();
       }
@@ -194,6 +195,7 @@ export function toggleMenuBarPanel() {
   } else {
     panel.setBounds({ x, y, width, height });
     panel.webContents.send(MENU_BAR_PANEL_SNAPSHOT_CHANNEL, current);
+    Electron.app.focus({ steal: true });
     panel.show();
     panel.focus();
   }
@@ -227,9 +229,12 @@ export function applyMenuBarSnapshot(snapshot: MenuBarSnapshot) {
   }
   tray.setTitle(summary.title, { fontType: "monospacedDigit" });
   tray.setToolTip(
-    summary.lowest
+    (summary.lowest
       ? `${summary.lowest.label}: ${summary.lowest.remainingPercent.toFixed(1)}% left (${summary.lowest.window})`
-      : "No fresh subscription limits available",
+      : "No fresh subscription limits available") +
+      (snapshot.settings.colorMode === "pace" && summary.worstPace
+        ? `\nPace: ${summary.worstPace.row.label} ${summary.worstPace.row.window} · ${Math.max(0, summary.worstPace.deficitPercent).toFixed(1)} points ahead of even pace`
+        : ""),
   );
   const patch = (value: Partial<MenuBarSettings>) => send({ type: "patch", patch: value });
   const menu: Electron.MenuItemConstructorOptions[] = [
@@ -286,6 +291,12 @@ export function applyMenuBarSnapshot(snapshot: MenuBarSnapshot) {
           type: "radio",
           checked: snapshot.settings.colorMode === "threshold",
           click: () => patch({ colorMode: "threshold" }),
+        },
+        {
+          label: "Usage pace",
+          type: "radio",
+          checked: snapshot.settings.colorMode === "pace",
+          click: () => patch({ colorMode: "pace" }),
         },
         { label: "Custom color…", click: () => send({ type: "settings" }) },
       ],

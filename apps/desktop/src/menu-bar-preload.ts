@@ -85,11 +85,16 @@ window.addEventListener("DOMContentLoaded", () => {
       action({ type: "patch", patch: { detail: value } });
     if (
       input.dataset.setting === "colorMode" &&
-      (value === "threshold" || value === "monochrome" || value === "custom")
+      (value === "threshold" || value === "monochrome" || value === "pace" || value === "custom")
     )
       action({ type: "patch", patch: { colorMode: value } });
     if (input.dataset.setting === "color") action({ type: "patch", patch: { color: value } });
     if (input.dataset.setting === "warningPercent" || input.dataset.setting === "criticalPercent")
+      action({ type: "patch", patch: { [input.dataset.setting]: Number(value) } });
+    if (
+      input.dataset.setting === "paceWarningPercent" ||
+      input.dataset.setting === "paceCriticalPercent"
+    )
       action({ type: "patch", patch: { [input.dataset.setting]: Number(value) } });
   });
   document.addEventListener("keydown", (event) => {

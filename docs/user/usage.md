@@ -161,6 +161,13 @@ for the comparison; green means slower usage, pink means faster, and purple
 means near an even pace. It appears only when the window length and reset time
 are known.
 
+Choose **Usage pace** for the color mode to highlight spending ahead of the even
+pace marker. It compares expected remaining minus actual remaining, in
+percentage points: 60% expected and 35% actual is a 25-point deficit. Amber starts
+at 10 points and red at 25, with both thresholds adjustable in the drawer.
+Each card shows its own pace, and the worst included window colors the menu bar.
+Missing clocks or stale data never produce an invented pace status.
+
 The companion alerts for new input or approval requests, failures, and usage
 limits. Existing requests are baselined when it starts, so launching it does not
 replay old alerts. Right-click the menu bar to change notification preferences,
