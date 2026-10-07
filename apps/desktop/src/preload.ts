@@ -85,6 +85,24 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   },
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getClientPlatform: () => clientPlatform,
+  ...(clientPlatform === "darwin"
+    ? {
+        focusAppWindow: () => ipcRenderer.invoke(IpcChannels.FOCUS_APP_WINDOW_CHANNEL),
+        showThreadNotification: (
+          notification: import("@t3tools/contracts").DesktopThreadNotification,
+        ) => ipcRenderer.invoke(IpcChannels.DESKTOP_THREAD_NOTIFICATION_CHANNEL, notification),
+      }
+    : {}),
+  setMenuBarSnapshot: (snapshot) =>
+    ipcRenderer.invoke(IpcChannels.MENU_BAR_SNAPSHOT_CHANNEL, snapshot),
+  onMenuBarAction: (listener) => {
+    const handler = (
+      _event: Electron.IpcRendererEvent,
+      action: import("@t3tools/contracts").MenuBarAction,
+    ) => listener(action);
+    ipcRenderer.on(IpcChannels.MENU_BAR_ACTION_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(IpcChannels.MENU_BAR_ACTION_CHANNEL, handler);
+  },
   setNotificationBadge: (badge) =>
     ipcRenderer.invoke(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, badge),
   onNotificationBadgeClear: (listener) => {

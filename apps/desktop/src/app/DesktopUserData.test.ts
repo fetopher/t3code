@@ -37,7 +37,7 @@ it.effect("identifies a failed source read and preserves its cause", () => {
   );
 });
 
-it.effect.each(["t3code", "T3 Code (Alpha)"])(
+it.effect.each(["t3code", "T3 Code Menu Bar"])(
   "preserves Windows credential keys from %s without copying browser databases",
   (sourceName) =>
     Effect.gen(function* () {
@@ -45,9 +45,9 @@ it.effect.each(["t3code", "T3 Code (Alpha)"])(
       const path = yield* Path.Path;
       const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-v2-profile-" });
       const source = path.join(directory, sourceName);
-      const destination = path.join(directory, "t3code-v2");
+      const destination = path.join(directory, "t3code-menubar");
       const state = '{"os_crypt":{"encrypted_key":"test-encrypted-key"}}';
-      yield* fs.makeDirectory(path.join(directory, "T3 Code (Alpha)"), { recursive: true });
+      yield* fs.makeDirectory(path.join(directory, "T3 Code Menu Bar"), { recursive: true });
       yield* fs.makeDirectory(path.join(source, "IndexedDB"), { recursive: true });
       yield* fs.writeFileString(path.join(source, "Local State"), state);
       yield* fs.writeFileString(path.join(source, "IndexedDB", "LOCK"), "V1 owns this database");
@@ -70,4 +70,22 @@ it.effect.each(["t3code", "T3 Code (Alpha)"])(
         "existing V2 state",
       );
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+);
+
+// The fork must never lock the official app's Chromium profile.
+it.effect("uses its own macOS profile even when the official profile exists", () =>
+  Effect.gen(function* () {
+    const result = yield* resolveUserDataPath({
+      appDataDirectory: "/profiles",
+      isDevelopment: false,
+      platform: "darwin",
+    });
+    assert.equal(result, "/profiles/t3code-menubar");
+  }).pipe(
+    Effect.provideService(
+      FileSystem.FileSystem,
+      FileSystem.makeNoop({ exists: () => Effect.succeed(true) }),
+    ),
+    Effect.provide(NodeServices.layer),
+  ),
 );

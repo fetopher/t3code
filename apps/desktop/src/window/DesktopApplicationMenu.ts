@@ -13,6 +13,7 @@ import * as ElectronMenu from "../electron/ElectronMenu.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as DesktopUpdates from "../updates/DesktopUpdates.ts";
 import * as DesktopWindow from "./DesktopWindow.ts";
+import { toggleMenuBarPanel } from "../ipc/methods/menuBar.ts";
 
 export class DesktopApplicationMenuActionError extends Schema.TaggedError<DesktopApplicationMenuActionError>()(
   "DesktopApplicationMenuActionError",
@@ -230,6 +231,16 @@ export const make = Effect.gen(function* () {
       {
         label: "View",
         submenu: [
+          ...(environment.platform === "darwin"
+            ? [
+                {
+                  label: "Menu Bar Usage",
+                  accelerator: "Cmd+Shift+U",
+                  click: toggleMenuBarPanel,
+                },
+                { type: "separator" as const },
+              ]
+            : []),
           { role: "reload" },
           { role: "forceReload" },
           { role: "toggleDevTools" },

@@ -141,3 +141,25 @@ Use `Ctrl+Shift+1/2/3/4` (`Cmd+Shift+1/2/3/4` on macOS) for the past
 24 hours, 7 days, 30 days, or 90 days. Period shortcuts do nothing on Limits.
 Press `Escape` to return to the previous page. Customize these shortcuts in
 **Settings → Keybindings**.
+
+## macOS menu bar
+
+In T3 Code Menu Bar, enable **Settings → General → Menu bar usage** to keep the
+lowest remaining reported allowance in the menu bar. Each provider uses its most
+constrained session, weekly, or other window. Click it for all readings, reset
+times, manual refresh, and provider selection in the popover. Right-click for the
+native menu, or press **Cmd+Shift+U** to open the popover. Choose display detail and icon color in the popover, or color
+and warning thresholds in General settings. Readings older than ten minutes are
+excluded from the headline; unavailable accounts do not count as zero. The triangle
+on each allowance bar marks how much would remain with even spending through
+its reset window. Hover it to compare your pace. It appears when the provider
+reports both the window length and reset time.
+
+With **Keep running in menu bar** enabled, closing the window hides it and keeps
+usage checks and notifications running. Choose **Quit T3 Code Menu Bar** to stop.
+In General settings, enable **Thread notifications** and **Only when a session
+needs me** for system alerts about input, approval, failures, or usage limits.
+Enable **Notify while focused** to receive them in the foreground too. Clicking
+an alert restores its session. Allow notifications for the fork in macOS
+System Settings if alerts are disabled. Use **Test alert** in the popover to
+check delivery.

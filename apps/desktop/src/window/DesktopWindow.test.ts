@@ -55,6 +55,7 @@ import {
 } from "../ipc/channels.ts";
 import * as DesktopServerExposure from "../backend/DesktopServerExposure.ts";
 import * as DesktopWindow from "./DesktopWindow.ts";
+import * as MenuBar from "../ipc/methods/menuBar.ts";
 import * as PreviewManager from "../preview/Manager.ts";
 
 const environmentInput = {
@@ -98,6 +99,7 @@ function makeFakeBrowserWindow() {
 
   const window = {
     close: vi.fn(),
+    hide: vi.fn(),
     focus: vi.fn(),
     getBounds: vi.fn(() => ({ x: 0, y: 0, width: 1100, height: 780 })),
     getNormalBounds: vi.fn(() => ({ x: 0, y: 0, width: 1100, height: 780 })),
@@ -128,6 +130,7 @@ function makeFakeBrowserWindow() {
 
   return {
     window: window as unknown as Electron.BrowserWindow,
+    hide: window.hide,
     getBounds: window.getBounds,
     getNormalBounds: window.getNormalBounds,
     isDestroyed: window.isDestroyed,
@@ -1206,6 +1209,30 @@ describe("DesktopWindow", () => {
       assert.isUndefined(createdWindowOptions[0]?.x);
       assert.isUndefined(createdWindowOptions[0]?.y);
     }),
+  );
+
+  it.effect.each([true, false])(
+    "respects keep-running preference (%s) when the main window closes",
+    (keepRunning) =>
+      Effect.gen(function* () {
+        const fakeWindow = makeFakeBrowserWindow();
+        const createCount = yield* Ref.make(0);
+        const mainWindow = yield* Ref.make<Option.Option<Electron.BrowserWindow>>(Option.none());
+        const layer = layerTest({ window: fakeWindow.window, createCount, mainWindow });
+        const spy = vi.spyOn(MenuBar, "shouldKeepMenuBarRunning").mockReturnValue(keepRunning);
+        yield* Effect.gen(function* () {
+          const desktopWindow = yield* DesktopWindow.DesktopWindow;
+          yield* desktopWindow.handleBackendReady(new URL("http://127.0.0.1:3773"));
+          const preventDefault = vi.fn();
+          fakeWindow.windowListeners.get("close")?.({ preventDefault });
+          assert.equal(preventDefault.mock.calls.length, keepRunning ? 1 : 0);
+          assert.equal(fakeWindow.hide.mock.calls.length, keepRunning ? 1 : 0);
+        }).pipe(
+          Effect.provide(layer),
+          Effect.scoped,
+          Effect.ensuring(Effect.sync(() => spy.mockRestore())),
+        );
+      }),
   );
 
   it.effect("persists the current main window bounds before the window closes", () =>

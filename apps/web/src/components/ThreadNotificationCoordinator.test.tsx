@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const state = vi.hoisted(() => ({
   mode: "off" as ClientSettings["notificationMode"],
   inApp: true,
+  attentionOnly: false,
+  notifyWhileFocused: false,
   active: { environmentId: "env-1", threadId: "other-thread" },
   focused: true,
   visible: "visible",
@@ -100,9 +102,21 @@ vi.mock("@tanstack/react-router", () => ({
 vi.mock("../hooks/useSettings", () => ({
   useClientSettings: (
     select: (
-      settings: Pick<ClientSettings, "notificationMode" | "inAppNotificationsEnabled">,
+      settings: Pick<
+        ClientSettings,
+        | "notificationMode"
+        | "inAppNotificationsEnabled"
+        | "notificationAttentionOnly"
+        | "notificationWhileFocused"
+      >,
     ) => unknown,
-  ) => select({ notificationMode: state.mode, inAppNotificationsEnabled: state.inApp }),
+  ) =>
+    select({
+      notificationMode: state.mode,
+      inAppNotificationsEnabled: state.inApp,
+      notificationAttentionOnly: state.attentionOnly,
+      notificationWhileFocused: state.notifyWhileFocused,
+    }),
   getClientSettings: () => ({ notificationMode: state.mode }),
 }));
 vi.mock("../state/environments", () => ({
@@ -141,6 +155,8 @@ beforeEach(() => {
   Object.assign(state, {
     mode: "off",
     inApp: true,
+    attentionOnly: false,
+    notifyWhileFocused: false,
     active: { environmentId: "env-1", threadId: "other-thread" },
     focused: true,
     visible: "visible",
@@ -322,5 +338,45 @@ describe("thread notifications", () => {
       tag: "env-1:thread-1",
       silent: true,
     });
+  });
+  it("suppresses completions but keeps requests for attention", async () => {
+    state.mode = "notifications";
+    state.attentionOnly = true;
+    state.focused = false;
+    await render();
+    await complete();
+    expect(state.notification).not.toHaveBeenCalled();
+    state.input = true;
+    await render();
+    await render();
+    expect(state.notification).toHaveBeenCalledTimes(1);
+    expect(state.notification).toHaveBeenCalledWith("Input needed", expect.any(Object));
+  });
+  it("can present a system alert while the app is focused", async () => {
+    state.mode = "notifications";
+    state.notifyWhileFocused = true;
+    state.attentionOnly = true;
+    await render();
+    state.approval = true;
+    await render();
+    expect(state.notification).toHaveBeenCalledWith("Approval needed", expect.any(Object));
+    expect(state.add).not.toHaveBeenCalled();
+  });
+  it("uses the native macOS alert even when Chromium's origin permission is denied", async () => {
+    state.mode = "notifications";
+    state.notifyWhileFocused = true;
+    state.attentionOnly = true;
+    const showThreadNotification = vi.fn().mockResolvedValue(undefined);
+    Object.assign(window, { desktopBridge: { showThreadNotification } });
+    vi.stubGlobal("Notification", Object.assign(state.notification, { permission: "denied" }));
+    await render();
+    state.approval = true;
+    await render();
+    expect(showThreadNotification).toHaveBeenCalledWith({
+      title: "Approval needed",
+      body: "Fix the login form",
+      target: { environmentId: "env-1", threadId: "thread-1" },
+    });
+    expect(state.notification).not.toHaveBeenCalled();
   });
 });

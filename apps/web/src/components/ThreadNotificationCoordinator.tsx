@@ -110,6 +110,8 @@ function EnvironmentNotifications({
   const inAppNotificationsEnabled = useClientSettings(
     (settings) => settings.inAppNotificationsEnabled,
   );
+  const attentionOnly = useClientSettings((settings) => settings.notificationAttentionOnly);
+  const notifyWhileFocused = useClientSettings((settings) => settings.notificationWhileFocused);
   const navigate = useNavigate();
   const { environmentId: activeEnvironmentId, threadId: activeThreadId } = useParams({
     strict: false,
@@ -153,7 +155,7 @@ function EnvironmentNotifications({
           : completion !== null && (prior.completion === null || completion > prior.completion)
             ? "completion"
             : null;
-      if (!kind) continue;
+      if (!kind || (kind === "completion" && attentionOnly)) continue;
       const title =
         kind === "completion"
           ? "Thread completed"
@@ -171,6 +173,7 @@ function EnvironmentNotifications({
       }
       if (
         inAppNotificationsEnabled &&
+        !notifyWhileFocused &&
         document.visibilityState === "visible" &&
         document.hasFocus() &&
         (activeEnvironmentId !== environmentId || activeThreadId !== thread.id)
@@ -207,11 +210,20 @@ function EnvironmentNotifications({
       }
       if (
         !hasDesktopNotifications(mode) ||
-        (document.visibilityState === "visible" && document.hasFocus()) ||
-        typeof Notification === "undefined" ||
-        Notification.permission !== "granted"
+        (!notifyWhileFocused && document.visibilityState === "visible" && document.hasFocus())
       )
         continue;
+      if (window.desktopBridge?.showThreadNotification) {
+        void window.desktopBridge
+          .showThreadNotification({
+            title,
+            body: thread.title.slice(0, 500),
+            target: { environmentId, threadId: thread.id },
+          })
+          .catch((error: unknown) => console.error("Could not show system notification", error));
+        continue;
+      }
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") continue;
       try {
         const notification = new Notification(title, {
           body: thread.title,
@@ -221,6 +233,7 @@ function EnvironmentNotifications({
         onNotification(environmentId, notification);
         notification.addEventListener("click", () => {
           notification.close();
+          void window.desktopBridge?.focusAppWindow?.();
           window.focus();
           void navigate({
             to: "/$environmentId/$threadId",
@@ -233,6 +246,8 @@ function EnvironmentNotifications({
     }
     previous.current = next;
   }, [
+    attentionOnly,
+    notifyWhileFocused,
     activeEnvironmentId,
     activeThreadId,
     environmentId,

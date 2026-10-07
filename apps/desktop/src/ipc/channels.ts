@@ -117,3 +117,11 @@ export const RECEIVE_PROVIDER_AUTH_CALLBACK_CHANNEL = "desktop:receive-provider-
 export const CANCEL_PROVIDER_AUTH_CALLBACK_CHANNEL = "desktop:cancel-provider-auth-callback";
 export const TAKE_LEGACY_LOCAL_STORAGE_CHANNEL = "desktop:take-legacy-local-storage";
 export const COMPLETE_LEGACY_LOCAL_STORAGE_CHANNEL = "desktop:complete-legacy-local-storage";
+
+export const MENU_BAR_SNAPSHOT_CHANNEL = "menubar:snapshot";
+export const MENU_BAR_ACTION_CHANNEL = "menubar:action";
+export const MENU_BAR_PANEL_SNAPSHOT_CHANNEL = "menubar:panel-snapshot";
+export const MENU_BAR_PANEL_ACTION_CHANNEL = "menubar:panel-action";
+export const DESKTOP_THREAD_NOTIFICATION_CHANNEL = "menubar:thread-notification";
+
+export const FOCUS_APP_WINDOW_CHANNEL = "menubar:focus-app";

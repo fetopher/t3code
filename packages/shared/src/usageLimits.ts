@@ -505,6 +505,22 @@ export function elapsedShare(window: ServerProviderUsageWindow, now: number): nu
   return Math.max(0, Math.min(1, (length - (resetsAt - now)) / length));
 }
 
+/** Even spending over the same accounts as the pooled quota; unknown clocks cannot be guessed. */
+export function evenPaceRemainingPercent(
+  windows: readonly ServerProviderUsageWindow[],
+  now: number,
+): number | null {
+  if (windows.length === 0) return null;
+  let remaining = 0;
+  for (const window of windows) {
+    const elapsed = elapsedShare(window, now);
+    const reset = resetMillis(window);
+    if (elapsed === null || reset === null || reset <= now) return null;
+    remaining += (1 - elapsed) * 100;
+  }
+  return remaining / windows.length;
+}
+
 export type LimitPace = "ahead" | "on" | "under";
 
 /**

@@ -1,6 +1,7 @@
 import { SettingsGroup } from "./SettingsGroup";
 import { useScopedSettingsWriteAllowed } from "./useScopedSettings";
 import { Spinner } from "~/components/ui/spinner";
+import { MenuBarSettings } from "./MenuBarSettings";
 import { NotificationSettings } from "./NotificationSettings";
 import { PRIVACY_POLICY_URL } from "../../legalLinks";
 import { ArchiveIcon, ArchiveX, CheckIcon, ChevronRightIcon, SettingsIcon } from "lucide-react";
@@ -2480,6 +2481,7 @@ export function GeneralSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="behavior" title="Behavior">
+        <MenuBarSettings />
         <NotificationSettings />
         <SettingsRow
           {...searchableSetting("in-app-notifications")}

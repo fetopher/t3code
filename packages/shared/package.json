@@ -402,6 +402,10 @@
     "./codexAuthHandoff": {
       "types": "./src/codexAuthHandoff.ts",
       "import": "./src/codexAuthHandoff.ts"
+    },
+    "./menuBar": {
+      "types": "./src/menuBar.ts",
+      "import": "./src/menuBar.ts"
     }
   },
   "scripts": {

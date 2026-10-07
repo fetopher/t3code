@@ -340,6 +340,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     scope: "project-defaults",
   },
   {
+    id: "menu-bar",
+    title: "Menu bar usage",
+    to: "/settings/general",
+    desktopOnly: true,
+    macOnly: true,
+    searchTerms: ["menubar", "quota", "remaining", "percentage", "color", "background", "tray"],
+  },
+  {
     id: "thread-notifications",
     title: "Thread notifications",
     to: "/settings/general",

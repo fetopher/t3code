@@ -1,3 +1,4 @@
+import { MenuBarSettings, DEFAULT_MENU_BAR_SETTINGS } from "./menuBar.ts";
 import { SshDeviceHostConfigs } from "./device.ts";
 import {
   AuthSettingsWriteScope,
@@ -298,6 +299,11 @@ export const ChatWidth = Schema.Literals(["comfortable", "wide", "full"]);
 export type ChatWidth = typeof ChatWidth.Type;
 
 export const ClientSettingsSchema = Schema.Struct({
+  menuBar: MenuBarSettings.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_MENU_BAR_SETTINGS)),
+  ),
+  notificationAttentionOnly: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  notificationWhileFocused: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   notificationMode: NotificationMode.pipe(
     Schema.withDecodingDefault(Effect.succeed("off" as const)),
   ),
@@ -1816,6 +1822,9 @@ export function requiredScopesForServerSettingsPatch(
 }
 
 export const ClientSettingsPatch = Schema.Struct({
+  menuBar: Schema.optionalKey(MenuBarSettings),
+  notificationAttentionOnly: Schema.optionalKey(Schema.Boolean),
+  notificationWhileFocused: Schema.optionalKey(Schema.Boolean),
   notificationMode: Schema.optionalKey(NotificationMode),
   inAppNotificationsEnabled: Schema.optionalKey(Schema.Boolean),
   diffColorScheme: Schema.optionalKey(DiffColorScheme),

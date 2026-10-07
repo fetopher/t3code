@@ -1091,7 +1091,15 @@ export const DesktopPreviewRecordingSaveInputSchema = Schema.Struct({
 export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
+import type { MenuBarSnapshot, MenuBarAction } from "./menuBar.ts";
+
 export interface DesktopBridge {
+  showThreadNotification?: (
+    notification: import("./menuBar.ts").DesktopThreadNotification,
+  ) => Promise<void>;
+  focusAppWindow?: () => Promise<void>;
+  setMenuBarSnapshot?: (snapshot: MenuBarSnapshot) => Promise<void>;
+  onMenuBarAction?: (listener: (action: MenuBarAction) => void) => () => void;
   getAppBranding: () => DesktopAppBranding | null;
   /** Absolute path of a dropped or picked file; absent on desktop builds predating it. */
   getPathForFile?: (file: File) => string;

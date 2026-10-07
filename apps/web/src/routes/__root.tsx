@@ -31,6 +31,7 @@ import { RunningThreadKeepAlive } from "../components/desktop/RunningThreadKeepA
 import { ProviderUpdateLaunchNotification } from "../components/ProviderUpdateLaunchNotification";
 import { NightlyMobileBetaNotice } from "../components/NightlyMobileBeta";
 import { LegacyThreadMigrationToast } from "../components/LegacyThreadMigrationToast";
+import { MenuBarCoordinator } from "../components/MenuBarCoordinator";
 import { ThreadNotificationCoordinator } from "../components/ThreadNotificationCoordinator";
 import { ReopenClosedViewShortcut } from "../components/ReopenClosedViewShortcut";
 import { ProjectCloneToastCoordinator } from "../components/ProjectCloneToastCoordinator";
@@ -234,6 +235,7 @@ function RootRouteView() {
           <SshPasswordPromptDialog />
           <SnapShotCoordinator />
           <ThreadNotificationCoordinator />
+          {isElectron ? <MenuBarCoordinator /> : null}
           <ReopenClosedViewShortcut />
           <ConfirmDialogHost />
           <CustomSnoozeDialogHost />

@@ -19,6 +19,7 @@ import {
   collectLimitPools,
   displayLimitWindows,
   elapsedShare,
+  evenPaceRemainingPercent,
   formatResetsIn,
   limitsNotice,
   paceOf,
@@ -1203,5 +1204,36 @@ describe("ChatGPT sharing presentation", () => {
         auth: { status: "unauthenticated", subscriptionSharing: true },
       }),
     ).toBe(false);
+  });
+});
+
+describe("even-pace allowance remaining", () => {
+  it("puts the marker at 50% halfway through a week, regardless of actual use", () => {
+    const weekly = {
+      ...window,
+      kind: "weekly",
+      windowDurationMins: 7 * 24 * 60,
+      usedPercent: 63,
+      resetsAt: new Date(now + 3.5 * 24 * 60 * 60_000).toISOString(),
+    } as const;
+    expect(evenPaceRemainingPercent([weekly], now)).toBe(50);
+  });
+  it("uses the same account weights as the pooled remaining allowance", () => {
+    expect(
+      evenPaceRemainingPercent(
+        [window, { ...window, resetsAt: new Date(now + 4 * 60 * 60_000).toISOString() }],
+        now,
+      ),
+    ).toBeCloseTo(60);
+  });
+  it("omits the marker if any pooled account lacks a clock or its reset is due", () => {
+    expect(evenPaceRemainingPercent([], now)).toBeNull();
+    expect(
+      evenPaceRemainingPercent([{ ...window, windowDurationMins: undefined }], now),
+    ).toBeNull();
+    expect(evenPaceRemainingPercent([window, { ...window, resetsAt: undefined }], now)).toBeNull();
+    expect(
+      evenPaceRemainingPercent([{ ...window, resetsAt: new Date(now).toISOString() }], now),
+    ).toBeNull();
   });
 });

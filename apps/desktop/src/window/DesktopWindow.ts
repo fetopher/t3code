@@ -1,3 +1,4 @@
+import { shouldKeepMenuBarRunning } from "../ipc/methods/menuBar.ts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -679,7 +680,11 @@ export const make = Effect.gen(function* () {
     window.on("move", scheduleBoundsPersist);
     window.on("maximize", scheduleBoundsPersist);
     window.on("unmaximize", scheduleBoundsPersist);
-    window.on("close", () => {
+    window.on("close", (event) => {
+      if (shouldKeepMenuBarRunning()) {
+        event.preventDefault();
+        window.hide();
+      }
       runFork(flushBoundsPersist);
     });
 
